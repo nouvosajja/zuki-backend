@@ -11,13 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pelanggans', function (Blueprint $table) {
-            $table->id();
-            $table->string('username_plgn', 100);
-            $table->string('password_plgn', 100);
-            $table->string('alamat', 100);
-            $table->string('no_telp', 100);
-            $table->timestamps();
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('device_token')->nullable()->after('address');
         });
     }
 
@@ -26,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pelanggans');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('device_token');
+        });
     }
 };

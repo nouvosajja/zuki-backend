@@ -12,4 +12,6 @@ class pktController extends Controller
         $plgn = Paket::all();
         return response()->json($plgn);
     }
+
+    
 }
