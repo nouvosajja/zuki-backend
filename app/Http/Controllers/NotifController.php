@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\User;
 
 class NotifController extends Controller
 {
     public function saveToken(Request $request)
     {
-        auth()->user()->update(['device_token' => $request->token]);
+
+        $user = auth()->user();
+        User::where('id', $user->id)->update(['device_token' => $request->token]);
         return response()->json(['token saved successfully.']);
     }
 
@@ -48,7 +51,7 @@ class NotifController extends Controller
         $response = curl_exec($ch);
 
         // Log response for debugging purposes
-        Log::info($response);
+        // Log::info($response);
 
         // You can also add error handling here if needed
         if ($response === false) {

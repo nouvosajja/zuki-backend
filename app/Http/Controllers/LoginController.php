@@ -25,7 +25,8 @@ class LoginController extends Controller
         //validate data
         $credentials = $request->validate([
             'email' => 'required',
-            'password' => 'required'
+            'password' => 'required',
+            'device_token' => 'required'
         ]);
 
         if(Auth::attempt($credentials)){

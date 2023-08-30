@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('password');
             $table->string('number')->unique();
             $table->string('address');
-            $table->string('profile_photo_path', 2048)->nullable();
+            //$table->string('device_token')->nullable();
             $table->timestamps();
         });
     }

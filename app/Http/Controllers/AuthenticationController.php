@@ -23,7 +23,8 @@ class AuthenticationController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),
             'number' => $request->number,
-            'address' => $request->address
+            'address' => $request->address,
+            'device_token' => $request->device_token
         ];
 
         $user=User::create($register);

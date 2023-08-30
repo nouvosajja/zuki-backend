@@ -11,9 +11,12 @@ return new class extends Migration
     {
         Schema::create('prices', function (Blueprint $table) {
             $table->id();
+            $table->string('nama');
             $table->string('waktu');
             $table->unsignedBigInteger('paket_id');
             $table->integer('harga');
+            $table->string('deskripsi');
+            $table->string('images')->default("");
             $table->foreign('paket_id')->references('id')->on('pakets');
             $table->timestamps();
         });
