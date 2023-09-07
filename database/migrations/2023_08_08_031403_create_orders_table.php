@@ -20,7 +20,7 @@ return new class extends Migration
             $table->double('berat')->default(0);
             $table->double('total_harga')->default(0);
             $table->string('snap_token')->default(0);
-            $table->enum('status', ['unpaid', 'paid'])->default('unpaid');
+            $table->enum('status', ['unpaid', 'paid']);
             $table->date('tanggal_pesanan');
             $table->timestamps();
         });

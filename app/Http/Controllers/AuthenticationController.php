@@ -10,12 +10,32 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthenticationController extends Controller
 {
-    public function index(){
+    public function index(Request $request){
         
-
-        $user = Auth::user();
+        $id = $request->user_id;
+        $user = User::where('user_id', $id);
         return response()->json($user);
     }
+    public function getUserAccount()
+{
+    $user = Auth::user();
+
+    if (!$user) {
+        return response()->json(['success' => false, 'message' => 'User not authenticated'], 401);
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'User account details retrieved successfully',
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'number' => $user->number,
+            // Add any other user attributes you want to include
+        ],
+    ]);
+}
 
     public function register(Request $request){
         $register=[

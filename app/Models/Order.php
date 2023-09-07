@@ -9,5 +9,20 @@ class Order extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $guarded = ['id'];
+    
+    protected $table = 'orders';
+    
+    protected $fillable = [
+        'user_id',
+        'paket_id',
+        'price_id',
+        'status_pesanan',
+        'berat',
+        'total_harga',
+        'snap_token',
+        'status',
+        'tanggal_pesanan',
+    
+    ];
 }

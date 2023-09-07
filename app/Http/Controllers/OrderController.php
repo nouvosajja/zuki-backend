@@ -30,7 +30,7 @@ class OrderController extends Controller
             'price_id' => $request->price_id,
             'paket_id' => $request->paket_id,
             'tanggal_pesanan' => $currentDate,
-            //'status' => 'paid',
+            'status' => 'unpaid',
         
         ]);
 
@@ -396,13 +396,32 @@ class OrderController extends Controller
     {
         $serverKey = config('midtrans.server_key');
         $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
-        if ($hashed == $request->signature_key) {
-            if ($request->transaction_status == 'capture' or $request->transaction_status == 'settlement' ) {
-                $order = Order::find($request->order_id);
-                $order->update(['status' => 'paid']);
-            }
+        if($hashed !== $request->signature_key) {
+            return response(['message' => 'Invalid Signature'], 403);
         }
+
+        $order = Order::find($request->order_id)->first();
+
+        if (!$order) {
+            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+        }
+
+        if($request->transaction_status == 'settlement'){
+            $order->update([
+                'status' => 'paid'
+            ]);
+        }
+
+        
+        return response(['message' => 'Callback success']);
     }
+    //     if ($hashed == $request->signature_key) {
+    //         if ($request->transaction_status == 'capture' or $request->transaction_status == 'settlement' ) {
+    //             $order = Order::find($request->order_id);
+    //             $order->update(['status' => 'paid']);
+    //         }
+    //     }
+    // }
           
 
     

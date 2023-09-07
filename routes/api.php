@@ -62,7 +62,7 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/register', [AuthenticationController::class, 'register']);
     Route::post('/logout', [AuthenticationController::class, 'logout'])->middleware('auth:sanctum');
     Route::post('/update/{id}', [AuthenticationController::class, 'update'])->middleware('auth:sanctum');
-    Route::get('/user', [AuthenticationController::class, 'index'])->middleware('auth:sanctum');
+    Route::get('/user', [AuthenticationController::class, 'index']);
     Route::get('/user/{id}', [AuthenticationController::class, 'show'])->middleware('auth:sanctum');
     Route::post('/save-token', [NotifController::class, 'saveToken'])->middleware('auth:sanctum');
     Route::post('/send-notif', [NotifController::class, 'sendNotif'])->middleware('auth:sanctum');
@@ -70,7 +70,7 @@ Route::group(['prefix' => 'auth'], function () {
     Route::get('/get-order/{id}', [OrderController::class, 'showOrder'])->middleware('auth:sanctum');
     Route::post('/confirm-order/{id}', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');
     Route::put('/finish-order', [OrderController::class, 'finishOrder'])->middleware('auth:sanctum');
-    Route::get('/get-order-user', [OrderController::class, 'listOrderByUser'])->middleware('auth:sanctum');
+    Route::get('/get-order-user/{id}', [OrderController::class, 'listOrderByUser'])->middleware('auth:sanctum');
     
 });
 Route::post('/midtrans-callback', [OrderController::class, 'midtransCallback']);
