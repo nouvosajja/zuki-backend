@@ -34,9 +34,10 @@ Route::group(['prefix' => 'price'], function () {
 
 Route::get('/paket',[pktController::class ,'index']);
 Route::get('/price',[priceController::class ,'index']);
+Route::post('/update-user/{id}', [AuthenticationController::class, 'updateUser'])->middleware('auth:sanctum');
+Route::get('/user/{id}',[AuthenticationController::class ,'index'])->middleware('auth:sanctum');
+Route::get('/user-all',[AuthenticationController::class ,'userAll']);
 
-Route::get('/user',[AuthenticationController::class ,'index'])->middleware('auth:sanctum');
-Route::post('/user/update',[AuthenticationController::class ,'show'])->middleware('auth:sanctum');
 
 Route::post('/login',[AuthenticationController::class, 'login']);
 Route::post('/login',[AuthenticationController::class, 'login']);
@@ -52,8 +53,10 @@ Route::post('/notif-pesenan-selesai/{id}', [OrderController::class, 'notifPesana
 Route::get('/get-order/{id}', [OrderController::class, 'listOrder'])->middleware('auth:sanctum');
 Route::post('/confirm-order/{id}', [OrderController::class, 'confirmOrder'])->middleware('auth:sanctum');
 Route::put('/finish-order/{id}', [OrderController::class, 'finishOrder'])->middleware('auth:sanctum');
-Route::get('/get-order-user/{id}', [OrderController::class, 'listOrderByUser'])->middleware('auth:sanctum');
+Route::get('/get-order-user', [OrderController::class, 'listOrderByUser'])->middleware('auth:sanctum');
 Route::get('/list-order-selesai/{id}', [OrderController::class, 'listOrderSelesai'])->middleware('auth:sanctum');
+Route::get('/menunggu-dikonfirmasi/{id}', [OrderController::class, 'listOrderMenungguDikonfirmasi'])->middleware('auth:sanctum');
+
 Route::post('/midtrans-callback', [OrderController::class, 'midtransCallback']);
 // Route::post('/payment/{id}', [OrderController::class, 'payment'])->middleware('auth:sanctum');
 
@@ -62,8 +65,6 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/register', [AuthenticationController::class, 'register']);
     Route::post('/logout', [AuthenticationController::class, 'logout'])->middleware('auth:sanctum');
     Route::post('/update/{id}', [AuthenticationController::class, 'update'])->middleware('auth:sanctum');
-    Route::get('/user', [AuthenticationController::class, 'index']);
-    Route::get('/user/{id}', [AuthenticationController::class, 'show'])->middleware('auth:sanctum');
     Route::post('/save-token', [NotifController::class, 'saveToken'])->middleware('auth:sanctum');
     Route::post('/send-notif', [NotifController::class, 'sendNotif'])->middleware('auth:sanctum');
     Route::get('/get-order', [OrderController::class, 'listOrder'])->middleware('auth:sanctum');
@@ -74,3 +75,4 @@ Route::group(['prefix' => 'auth'], function () {
     
 });
 Route::post('/midtrans-callback', [OrderController::class, 'midtransCallback']);
+Route::get('/get-user/{id}', [OrderController::class,'getUserAccount']);

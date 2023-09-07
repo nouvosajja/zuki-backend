@@ -34,29 +34,6 @@ class OrderController extends Controller
         
         ]);
 
-        // Set your Merchant Server Key
-        //\Midtrans\Config::$serverKey = config('app.server_key');
-        // Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-        //\Midtrans\Config::$isProduction = false;
-        // Set sanitization on (default)
-        //\Midtrans\Config::$isSanitized = true;
-        // Set 3DS transaction for credit card to true
-        //\Midtrans\Config::$is3ds = true;
-
-        // $params = array(
-        //     'transaction_details' => array(
-        //         'order_id' => $paket->id . uniqid(),
-        //         'gross_amount' => $paket->harga,
-        //     ),
-        //     'customer_details' => array(
-        //         'name' => $user->name,
-        //         'email' => $user->email,
-        //         'phone' => $user->number,
-        //     ),
-        // );
-
-        // $snapToken = \Midtrans\Snap::getSnapToken($params);
-        // $redirect_url = 'https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $snapToken;
 
         $userAdmin = User::whereNotNull('device_token')
             ->where('role', '1')
@@ -78,10 +55,6 @@ class OrderController extends Controller
             'paket_id' => $request->paket_id,
             'berat' => $request->berat,
             'total_harga' => $request->total_harga,
-            //'data' => [
-               //'token' => $snapToken,
-                //'redirect_url' => $redirect_url,
-            //],
         ]);
     }
 
@@ -242,60 +215,84 @@ class OrderController extends Controller
     // }
 
     public function inputBerat(Request $request, $id) {
+    $users = Auth::user();
+    $validatedData = $request->validate([
+        'berat' => 'required|numeric',
+        'total_harga' => 'required|numeric',
+    ]);
 
-        $users = Auth::user();
-        $validatedData = $request->validate([
-            'berat' => 'required|numeric',
-            'total_harga' => 'required|numeric',
-        ]);
+    $order = Order::find($id);
 
-        $order = Order::find($id);
+    //Set your Merchant Server Key
+    \Midtrans\Config::$serverKey = config('app.server_key');
+    //Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
+    \Midtrans\Config::$isProduction = false;
+    //Set sanitization on (default)
+    \Midtrans\Config::$isSanitized = true;
+    //Set 3DS transaction for credit card to true
+    \Midtrans\Config::$is3ds = true;
 
-        //Set your Merchant Server Key
-        \Midtrans\Config::$serverKey = config('app.server_key');
-        //Set to Development/Sandbox Environment (default). Set to true for Production Environment (accept real transaction).
-        \Midtrans\Config::$isProduction = false;
-        //Set sanitization on (default)
-        \Midtrans\Config::$isSanitized = true;
-        //Set 3DS transaction for credit card to true
-        \Midtrans\Config::$is3ds = true;
-
-        $params = array(
-            'transaction_details' => array(
-                'order_id' => $order->id,
-                'gross_amount' => $validatedData['total_harga'],
-            ),
-            'customer_details' => array(
-                'name' => $users->name,
-                'email' => $users->email,
-                'phone' => $users->number,
-            ),
-        );
-
-         // Generate the Snap Token
-        $snapToken = Snap::getSnapToken($params);
-        $redirect_url = 'https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $snapToken;
-    
-        // $order->update([
-        // 'snap_token' => $snapToken,
-        // ]);
-    
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-        }
-    
-        $order->berat = $validatedData['berat'];
-        $order->total_harga = $validatedData['total_harga'];
-        $order->status_pesanan = 'dikonfirmasi'; // Assuming you want to update the status as well
-        $order->snap_token = $snapToken;
-        $order->save();
-    
-        return response()->json(['success' => true, 'message' => 'Berat updated successfully', 'data' => $order, 'snap_token'=>$snapToken,]);
+    $discountAmount = 0;
+    if ($validatedData['berat'] > 5) {
+        $discountAmount = floor(($validatedData['berat'] - 5) / 5) * 10000;
     }
 
-    public function listOrderByUser(){
+    $totalHargaSetelahDiskon = $validatedData['total_harga'] - $discountAmount;
+
+    if (!$order) {
+        return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+    }
+
+    $order->berat = $validatedData['berat'];
+    
+    // Memeriksa apakah ada diskon yang diberikan
+    if ($discountAmount > 0) {
+        $order->total_harga = $totalHargaSetelahDiskon;
+        $order->promo = 1; // Diskon diberikan
+    } else {
+        $order->total_harga = $validatedData['total_harga'];
+        $order->promo = 0; // Tidak ada diskon
+    }
+    
+    $order->status_pesanan = 'dikonfirmasi'; // Assuming you want to update the status as well
+    $order->save();
+
+    $params = array(
+        'transaction_details' => array(
+            'order_id' => $order->id,
+            'gross_amount' => $order->total_harga, // Menggunakan total harga setelah diskon
+        ),
+        'customer_details' => array(
+            'name' => $users->name,
+            'email' => $users->email,
+            'phone' => $users->number,
+        ),
+    );
+
+    // Generate the Snap Token setelah total harga diperbarui
+    $snapToken = Snap::getSnapToken($params);
+    
+    // Mengupdate snap_token pada order setelah menghasilkan Snap Token
+    $order->snap_token = $snapToken;
+    $order->save();
+
+    return response()->json(['success' => true, 'message' => 'Berat updated successfully', 'data' => $order, 'snap_token' => $snapToken]);
+}
+
+
+    public function listOrderByUser(Request $request){
         $user = Auth::user();
-        $order = Order::where('user_id', $user->id)->where('status_pesanan', 'dikonfirmasi')->get();
+        // $order = Order::where('user_id', $user->id)->where('status_pesanan', 'dikonfirmasi')->get();
+        $confirmation = $request->status_pesanan;
+        $order = DB::table('orders')
+            ->join('prices', 'orders.price_id', '=', 'prices.id')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->join('pakets', 'orders.paket_id', '=', 'pakets.id')
+            ->select('orders.*', 'pakets.nama_pkt as nama_paket', 'users.address as address_user','prices.nama as name_prices', 'prices.harga as harga_price', 'prices.waktu as waktu_price', 'orders.created_at as createdAt_orders', 'orders.berat', 'orders.status_pesanan', 'orders.status')
+            ->where('user_id', $user->id)
+            ->where('status_pesanan', $confirmation)
+            ->distinct()
+            ->get();
 
         
 
@@ -308,6 +305,13 @@ class OrderController extends Controller
             //     'redirect_url' => $redirect_url,
             // ],
         ]);
+    }
+    
+    public function userAll(Request $request){
+        
+        $id = $request->user_id;
+        $user = User::where('user_id', $id);
+        return response()->json($user);
     }
 
     
@@ -396,33 +400,37 @@ class OrderController extends Controller
     {
         $serverKey = config('midtrans.server_key');
         $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
-        if($hashed !== $request->signature_key) {
-            return response(['message' => 'Invalid Signature'], 403);
-        }
-
-        $order = Order::find($request->order_id)->first();
+        
+        $order = Order::find($request->order_id);
 
         if (!$order) {
             return response()->json(['success' => false, 'message' => 'Order not found'], 404);
         }
 
-        if($request->transaction_status == 'settlement'){
-            $order->update([
+        if ($request->status_code == '200'){
+                $order->update([
                 'status' => 'paid'
             ]);
         }
+        
 
         
         return response(['message' => 'Callback success']);
     }
-    //     if ($hashed == $request->signature_key) {
-    //         if ($request->transaction_status == 'capture' or $request->transaction_status == 'settlement' ) {
-    //             $order = Order::find($request->order_id);
-    //             $order->update(['status' => 'paid']);
-    //         }
-    //     }
-    // }
-          
+
+     
+     public function listOrderMenungguDikonfirmasi()
+    {
+    $orders = Order::where('user_id', $userId)
+                  ->where('status_pesanan', 'menunggu_dikonfirmasi')
+                  ->get();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'List pesanan belum dikonfirmasi',
+        'data' => $orders,
+    ]);
+    }     
 
     
     public function listOrderSelesai(){
@@ -441,7 +449,7 @@ class OrderController extends Controller
             ->join('prices', 'orders.price_id', '=', 'prices.id')
             ->join('users', 'orders.user_id', '=', 'users.id')
             ->join('pakets', 'orders.paket_id', '=', 'pakets.id')
-            ->select('orders.*', 'pakets.nama_pkt as nama_paket', 'users.name as name_user', 'prices.nama as name_prices', 'prices.harga as harga_price', 'prices.waktu as waktu_price', 'orders.created_at as createdAt_orders', 'orders.berat', 'orders.status_pesanan', 'orders.status')
+            ->select('orders.*', 'pakets.nama_pkt as nama_paket', 'users.name as name_user', 'users.address as address_user', 'prices.nama as name_prices', 'prices.harga as harga_price', 'prices.waktu as waktu_price', 'orders.created_at as createdAt_orders', 'orders.berat', 'orders.status_pesanan', 'orders.status')
             ->orderBy('orders.id', 'desc')
             ->distinct()
             ->get();
