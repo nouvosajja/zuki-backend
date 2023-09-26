@@ -21,6 +21,7 @@ return new class extends Migration
             $table->double('total_harga')->default(0);
             $table->string('snap_token')->default(0);
             $table->enum('status', ['unpaid', 'paid']);
+            $table->enum('promo', ['0', '1'])->default('0'); // ['0', '1'
             $table->date('tanggal_pesanan');
             $table->timestamps();
         });

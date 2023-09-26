@@ -2,21 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\AuthenticationController;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Price;
 use App\Models\User;
+use App\Models\Inbox;
 use App\Models\admin;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\NotifController;
 use Illuminate\Support\Carbon;
 use Midtrans\Snap;
+use App\Http\Controllers\InboxController;
 
 
 class OrderController extends Controller
 {
-
+    
     public function createOrder(Request $request)
     {
         $user = Auth::user();
@@ -33,19 +36,33 @@ class OrderController extends Controller
             'status' => 'unpaid',
         
         ]);
-
-
-        $userAdmin = User::whereNotNull('device_token')
-            ->where('role', '1')
-            ->pluck('device_token')
-            ->all();
-
-        // notification untuk admin ada pesanan baru
-         $judul = 'Ada pesanan baru';
-         $pesan = 'Haloo wirr, pesanan baru menunggu diproses';
-         
+        
+        $inbox = Inbox::create([
+            'user_id' => $user->id,
+            'subject' => 'Pesanan Anda telah berhasil dibuat',
+            'message' => 'Terima kasih telah melakukan pemesanan. Kami akan segera memproses pesanan Anda.',
+            'type' => 'order', // Anda dapat mengganti tipe pesan sesuai kebutuhan
+            'redirect_id' => $order->id, // Anda dapat menggunakan ID pesanan sebagai referensi
+            'tanggal_inbox' => $currentDate,
+        ]);
+        
+        $adminUsers = User::where('role', 1)->pluck('device_token')->toArray();
+        $adminTitle = 'Ada pesanan baru';
+        $adminMessage = 'Ada pesanan baru yang perlu diproses.';
         $sendNotif = new NotifController();
-        $sendNotif->sendNotification($userAdmin, $judul, $pesan);
+        $sendNotif->sendNotification($adminUsers, $adminTitle, $adminMessage);
+        
+
+        
+            // Mengirim notifikasi kepada pengguna (user)
+        $device_token = User::where('role', 0)->pluck('device_token')->toArray();   
+        $judulUser = 'Pesanan Dibuat';
+        $pesanUser = 'Pesanan Anda telah berhasil dibuat.';
+        $sendNotifUser = new NotifController();
+        $sendNotifUser->sendNotification($device_token, $judulUser, $pesanUser);
+        
+        
+
 
         return response()->json([
             'success'   => True,
@@ -57,50 +74,32 @@ class OrderController extends Controller
             'total_harga' => $request->total_harga,
         ]);
     }
-
-    /**
-     * Display a listing of the resource.
-     */
+    
     public function index()
     {
         
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Order $order)
     {
-        //
+        
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Order $order)
     {
-        //
+        
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id)
     {
         $validatedData = $request->validate([
@@ -114,12 +113,9 @@ class OrderController extends Controller
         return response()->json(['message' => 'Model updated successfully', 'data' => $model]);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Order $order)
     {
-        //
+        
     }
 
     public function notifPesananSelesai($id) {
@@ -151,23 +147,7 @@ class OrderController extends Controller
     }
 
     public function confirmOrder(Request $request, $id) {
-        // $orderId = $request->order_id;
-        // $order = Order::find($orderId);
-    
-        // if (!$orderId) {
-        //     return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-        // }
-    
-        // // $order->status_pesanan = 'dikonfirmasi';
-        // $order->update([
-        //     'status_pesanan' => 'dikonfirmasi',
-        //     'berat' => $request->berat   
-
-        // ]);
-
-    
-        // return response()->json(['success' => true, 'message' => 'Order confirmed successfully']);
-
+        
         DB::table('orders')
         ->where('id', $id)
         ->update([
@@ -180,48 +160,18 @@ class OrderController extends Controller
     ]);
     }
 
-    public function finishOrder(Request $request) {
-        $order_Id = $request->order_id;
-        $price_Id = $request->price_id;
-        $order = Order::find($order_Id);
-    
-        if (!$order) {
-            return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-        }
-    
-        // $order->status_pesanan = 'selesai';
-        $order->update([
-            'status_pesanan' => 'Selesai',
-            'price_id' => $price_Id,
-        ]);
-
-        // notification untuk user pesanan selesai
-        $judul = 'Pesanan selesai';
-        $pesan = 'Haloo wirr, Pesanan kamu telah selesai';
-        NotifController::sendNotification($order->user_id, $judul, $pesan);
-
-    
-        return response()->json(['success' => true, 'message' => 'Order finish successfully']);
-    }
-
-    // public function inputBerat(){
-    //     $order = Order::where('status_pesanan', 'dikonfirmasi')->get();
-
-    //     return response()->json([
-    //         'success'   => true,
-    //         'message'    => 'successfully get list order',
-    //         'data' => $order,
-    //     ]);
-    // }
-
     public function inputBerat(Request $request, $id) {
-    $users = Auth::user();
+    
+    $order = Order::find($id);
+    
+    $user = User::find($order->user_id);
+    $currentDate = Carbon::now();
     $validatedData = $request->validate([
         'berat' => 'required|numeric',
         'total_harga' => 'required|numeric',
+        
     ]);
 
-    $order = Order::find($id);
 
     //Set your Merchant Server Key
     \Midtrans\Config::$serverKey = config('app.server_key');
@@ -263,11 +213,20 @@ class OrderController extends Controller
             'gross_amount' => $order->total_harga, // Menggunakan total harga setelah diskon
         ),
         'customer_details' => array(
-            'name' => $users->name,
-            'email' => $users->email,
-            'phone' => $users->number,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->number,
         ),
     );
+    
+    $inboxInputBerat = Inbox::create([
+        'user_id' => $user->id,
+        'subject' => 'Pesanan anda telah selesai',
+        'message' => 'Silahkan segera selesaikan pembayaran anda',
+        'type' => 'order', // Sesuaikan dengan kebutuhan
+        'redirect_id' => $order->id, // ID pesanan sebagai referensi
+        'tanggal_inbox' => $currentDate, // Tanggal saat ini
+    ]);
 
     // Generate the Snap Token setelah total harga diperbarui
     $snapToken = Snap::getSnapToken($params);
@@ -275,36 +234,47 @@ class OrderController extends Controller
     // Mengupdate snap_token pada order setelah menghasilkan Snap Token
     $order->snap_token = $snapToken;
     $order->save();
+    
+    $judulUser = 'Pesanan anda telah selesai';
+    $pesanUser = 'Silahkan segera selesaikan pembayaran anda';
+    $sendNotifUser = new NotifController();
+    $sendNotifUser->sendNotification([$user->device_token], $judulUser, $pesanUser); // Menggunakan device_token pengguna
+    
 
     return response()->json(['success' => true, 'message' => 'Berat updated successfully', 'data' => $order, 'snap_token' => $snapToken]);
-}
+    }
+
+    public function setOrderSelesai($id)
+    {
+    // Mencari pesanan berdasarkan ID
+    $order = Order::find($id);
+
+    if (!$order) {
+        return response()->json(['success' => false, 'message' => 'Order not found'], 404);
+    }
+
+    // Mengubah status_pesanan menjadi "selesai"
+    $order->status_pesanan = 'selesai';
+    $order->save();
+
+    // Anda juga dapat menambahkan notifikasi atau tindakan lain yang sesuai di sini
+
+    return response()->json(['success' => true, 'message' => 'Order marked as selesai', 'data' => $order]);
+    }
 
 
     public function listOrderByUser(Request $request){
-        $user = Auth::user();
-        // $order = Order::where('user_id', $user->id)->where('status_pesanan', 'dikonfirmasi')->get();
-        $confirmation = $request->status_pesanan;
-        $order = DB::table('orders')
-            ->join('prices', 'orders.price_id', '=', 'prices.id')
-            ->join('users', 'orders.user_id', '=', 'users.id')
-            ->join('pakets', 'orders.paket_id', '=', 'pakets.id')
-            ->select('orders.*', 'pakets.nama_pkt as nama_paket', 'users.address as address_user','prices.nama as name_prices', 'prices.harga as harga_price', 'prices.waktu as waktu_price', 'orders.created_at as createdAt_orders', 'orders.berat', 'orders.status_pesanan', 'orders.status')
-            ->where('user_id', $user->id)
-            ->where('status_pesanan', $confirmation)
-            ->distinct()
-            ->get();
+        $userId = $request->user()->id; // Mengambil ID pengguna yang sedang masuk
 
-        
+    // Mengambil semua pesanan berdasarkan ID pengguna
+    $orders = Order::where('user_id', $userId)->orderBy('created_at', 'desc') // Mengurutkan berdasarkan kolom created_at secara descending (terbaru ke terlama)
+                   ->get();
 
-        return response()->json([
-            'success'   => true,
-            'message'    => 'successfully get list order',
-            'data' => $order,
-            // 'data' => [
-            //    'token' => $snapToken,
-            //     'redirect_url' => $redirect_url,
-            // ],
-        ]);
+    return response()->json([
+        'success' => true,
+        'message' => 'Daftar pesanan berdasarkan pengguna',
+        'data' => $orders,
+    ]);
     }
     
     public function userAll(Request $request){
@@ -314,89 +284,7 @@ class OrderController extends Controller
         return response()->json($user);
     }
 
-    
-//     public function midtransCallback(Request $request){
-
-//     $orderId = $request->input('order_id');
-//     // $transactionStatus = $request->input('status');
-
-//     $order = Order::find($orderId);
-
-//     if (!$order) {
-//         return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-//     }
-
-//     if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-//         // Payment is successful
-//         $order->update([
-//             'status' => 'paid', 
-//         ]);
-
-//     return response()->json(['success' => true, 'message' => 'Callback processed successfully']);
-    
-//     }
-// }
-
-    // public function midtransCallback(Request $request)
-    // {
-    //     $orderId = $request->input('order_id');
-    //     $transactionStatus = $request->input('status');
-    //     $order = Order::find($orderId);
-
-    //     if (!$order) {
-    //         return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-    //     }
-
-    //     if ($transactionStatus == 'capture' || $transactionStatus == 'settlement') {
-    //         // Payment is successful
-    //         $order->update([
-    //             'status' => 'paid', 
-    //         ]);
-
-    //         return response()->json(['success' => true, 'message' => 'Callback processed successfully']);
-    //     }
-    // }
-
     public function midtransCallback(Request $request) 
-    // {
-    //     // Parse the incoming callback data
-    //     $data = $request->all();
-    
-    //     // Verify the signature
-    //     $signatureKey = config('app.server_key');
-    //     $orderId = $data['id'];
-    //     $statusCode = $data['status'];
-    //     $grossAmount = $data['total_harga'];
-    //     $signature = $data['snap_token'];
-    
-    //     $stringToDigest = $orderId . $statusCode . $grossAmount . $signatureKey;
-    //     $generatedSignature = hash('sha512', $stringToDigest);
-    
-    //     if ($generatedSignature !== $signature) {
-    //         return response()->json(['success' => false, 'message' => 'Invalid signature'], 400);
-    //     }
-    
-    //     // Find the order based on the received order_id
-    //     $order = Order::find($orderId);
-    
-    //     if (!$order) {
-    //         return response()->json(['success' => false, 'message' => 'Order not found'], 404);
-    //     }
-    
-    //     // Update order status based on the callback status
-    //     if ($statusCode == 'unpaid') {
-    //         // Payment success
-    //         $order->status_pesanan = 'paid';
-    //         // You might want to perform other actions here, like sending notifications, updating stock, etc.
-    //     } else {
-    //         // Payment failure or other status
-    //         $order->status_pesanan = 'unpaid';
-    //     }
-    
-    //     $order->save();
-    
-    //     return response()->json(['success' => true, 'message' => 'Callback processed successfully']);
-    // }
     {
         $serverKey = config('midtrans.server_key');
         $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
@@ -412,8 +300,6 @@ class OrderController extends Controller
                 'status' => 'paid'
             ]);
         }
-        
-
         
         return response(['message' => 'Callback success']);
     }
@@ -450,13 +336,35 @@ class OrderController extends Controller
             ->join('users', 'orders.user_id', '=', 'users.id')
             ->join('pakets', 'orders.paket_id', '=', 'pakets.id')
             ->select('orders.*', 'pakets.nama_pkt as nama_paket', 'users.name as name_user', 'users.address as address_user', 'prices.nama as name_prices', 'prices.harga as harga_price', 'prices.waktu as waktu_price', 'orders.created_at as createdAt_orders', 'orders.berat', 'orders.status_pesanan', 'orders.status')
-            ->orderBy('orders.id', 'desc')
+            ->orderBy('orders.created_at', 'desc')
             ->distinct()
             ->get();
+            
+            // Loop through the transactions
+    foreach ($transactions as $transaction) {
+        // Contoh notifikasi untuk pengguna
+        $userNotification = new NotifController();
+        $userNotification->sendNotification(
+            $transaction->user_id,
+            'Pesanan Baru',
+            'Pesanan baru dengan ID ' . $transaction->id . ' telah dibuat.'
+        );
+
+        // Contoh notifikasi untuk admin (role 1)
+        $admins = User::where('role', 1)->get();
+        foreach ($admins as $admin) {
+            $adminNotification = new NotifController();
+            $adminNotification->sendNotification(
+                $admin->device_token, // Sesuaikan dengan cara Anda menyimpan device_token admin
+                'Pesanan Baru',
+                'Pesanan baru dengan ID ' . $transaction->id . ' telah dibuat oleh pengguna ' . $transaction->name_user . '.'
+            );
     
         return response()->json([
             'transactions' => $transactions
         ]);
     }
 
+}
+}
 }

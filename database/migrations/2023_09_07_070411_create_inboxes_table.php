@@ -19,6 +19,7 @@ return new class extends Migration
             $table->boolean('read')->default(false);
             $table->enum('type', ['sistem', 'order'])->default('sistem');
             $table->integer('redirect_id')->nullable();
+            $table->date('tanggal_inbox')->nullable();
             $table->timestamps();
         });
     }

@@ -22,6 +22,7 @@ class Order extends Model
         'total_harga',
         'snap_token',
         'status',
+        'promo',
         'tanggal_pesanan',
     
     ];

@@ -9,15 +9,17 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 
 class AuthenticationController extends Controller
-{
+    {
+        
     public function index(Request $request){
         
         $id = $request->user_id;
         $user = User::where('user_id', $id);
         return response()->json($user);
     }
+    
     public function getUserAccount()
-{
+    {
     $user = Auth::user();
 
     if (!$user) {
@@ -35,7 +37,20 @@ class AuthenticationController extends Controller
             // Add any other user attributes you want to include
         ],
     ]);
-}
+    }
+
+    public function getAllUsers()
+    {
+    // Mengambil semua data pengguna dari tabel 'users'
+    $users = User::all();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'All user accounts retrieved successfully',
+        'users' => $users,
+    ]);
+    }
+
 
     public function register(Request $request){
         $register=[
@@ -60,21 +75,6 @@ class AuthenticationController extends Controller
 
     public function login(Request $request)
     {
-        // $request->validate([
-        //     'email' => 'required',
-        //     'password' => 'required'
-        // ]);
-        
-        // $user = User::where('email', $request->email)->first();
-        
-        // if(!$user || !Hash::check($request->email, $user->password)){
-        //     return response([
-        //         'email' => ['These credentials do not match our records.']
-        //     ]);
-        // }
-
-        // return $user->createToken('my-token')->plainTextToken;
-
         if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
             // Authentication was successful...
             $auth = Auth::user();
@@ -93,25 +93,31 @@ class AuthenticationController extends Controller
         }
     }
 
-    // public function logout(Request $request){
-    //     $request->user()->currentAccessToken()->delete();
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Logout Success'
-    //     ]);
-    // }
     public function show(Request $request)
     {
         $user = Auth::user();
-        $update=[
-            'name' => $request->name,
-            'password' => bcrypt($request->password),
-            'number' => $request->number,
-            'address' => $request->address
-        ];
 
-        $user->update($update);
-        return response()->json($user);
+    // Validasi data yang diterima dari request
+    $request->validate([
+        'name' => 'required|string',
+        'password' => 'nullable|string|min:6', // Password bersifat opsional
+        'number' => 'required|string',
+        'address' => 'required|string',
+    ]);
+
+    // Update data pengguna berdasarkan data yang diterima dari request
+    $user->update([
+        'name' => $request->name,
+        'password' => $request->password ? bcrypt($request->password) : $user->password,
+        'number' => $request->number,
+        'address' => $request->address,
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'User data updated successfully',
+        'user' => $user,
+    ]);
     }
 
 }
